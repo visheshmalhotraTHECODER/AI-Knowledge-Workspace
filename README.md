@@ -1,155 +1,132 @@
-<div align="center">
+# AI Knowledge Workspace
 
-<img src="https://capsule-render.vercel.app/api?type=waving&color=0:0d1117,100:7c3aed&height=140&section=header&text=docuchat-ai&fontSize=48&fontColor=ffffff&fontAlignY=52&desc=RAG+chat+for+your+documents&descSize=15&descAlignY=72&descFontColor=c4b5fd" />
+A document-grounded question-answering application built with Next.js, LangChain and a hosted vector database. Upload supported documents, retrieve relevant passages with vector similarity search, and ask an LLM questions using the retrieved context.
 
-![Next.js](https://img.shields.io/badge/Next.js-15-7c3aed?style=flat-square&labelColor=0d1117)
-&nbsp;
-![LangChain](https://img.shields.io/badge/LangChain-0.3-7c3aed?style=flat-square&labelColor=0d1117)
-&nbsp;
-![CI](https://img.shields.io/github/actions/workflow/status/Dipanshu-js/docuchat-ai/ci.yml?style=flat-square&color=7c3aed&labelColor=0d1117&label=CI)
-&nbsp;
-![License](https://img.shields.io/github/license/Dipanshu-js/docuchat-ai?style=flat-square&color=555&labelColor=0d1117)
-&nbsp;
-![Stars](https://img.shields.io/github/stars/Dipanshu-js/docuchat-ai?style=flat-square&color=f0b429&labelColor=0d1117)
-
-</div>
-
----
-
-Upload PDFs, Word docs, or text files and chat with them using AI. Powered by LangChain RAG with Groq, Gemini, OpenAI, Anthropic, or Ollama. Fully serverless — runs on Vercel with Upstash Vector, no Docker required.
-
-```
-Upload → chunk → embed → Upstash Vector
-Ask question → similarity search → LLM → streamed answer + source citations
-```
-
----
+> **Project status:** Source code is published. Provider credentials and an Upstash Vector index are required for document ingestion and AI chat. These integrations have not been configured in this repository's public deployment.
 
 ## Features
 
-- **Multi-format** — PDF, DOCX, TXT, Markdown
-- **5 AI providers** — Groq, Gemini, OpenAI, Anthropic, Ollama (switch mid-conversation)
-- **Source citations** — every answer shows which file it came from
-- **Streaming** — token-by-token SSE streaming
-- **Multi-doc** — upload several files and chat across all of them at once
-- **Serverless** — Vercel + Upstash, zero Docker, zero servers to manage
-- **Free to start** — Groq and Gemini both have generous free tiers
-
----
-
-## Quick start
-
-```sh
-git clone https://github.com/Dipanshu-js/docuchat-ai.git
-cd docuchat-ai
-
-cp .env.example .env.local
-# → add your API keys (see Environment Variables below)
-
-npm install
-npm run dev
-# → http://localhost:3000
-```
-
----
-
-## Environment variables
-
-Copy `.env.example` to `.env.local` and fill in your keys:
-
-```sh
-# Free providers (start here)
-GROQ_API_KEY=gsk_...        # https://console.groq.com
-GEMINI_API_KEY=AIza...      # https://aistudio.google.com
-
-# Optional paid providers
-OPENAI_API_KEY=sk-...
-ANTHROPIC_API_KEY=sk-ant-...
-
-# Upstash Vector — free serverless vector DB
-# https://console.upstash.com → Create Index
-# Dimensions: 768 (Gemini) or 1536 (OpenAI)
-UPSTASH_VECTOR_REST_URL=https://your-index.upstash.io
-UPSTASH_VECTOR_REST_TOKEN=your-token
-```
-
----
-
-## AI providers
-
-| Provider | Free tier | Default model | Notes |
-|---|---|---|---|
-| **Groq** | Yes | llama-3.3-70b-versatile | Fastest inference |
-| **Gemini** | Yes | gemini-1.5-flash | Also provides free embeddings |
-| OpenAI | No | gpt-4o | Also provides embeddings |
-| Anthropic | No | claude-3-5-haiku | Best for long documents |
-| Ollama | Local | llama3 | Fully offline |
-
----
+- Upload PDF, DOCX, TXT and Markdown files (the ingestion route enforces a 50 MB per-file limit).
+- Parse and chunk documents before embedding and indexing them.
+- Retrieve relevant chunks from Upstash Vector for a question.
+- Stream generated answers to the browser.
+- Return source filenames with answers.
+- Select among the LLM providers supported by the application: Groq, Gemini, OpenAI, Anthropic and Ollama.
 
 ## How it works
 
-```
-1. Upload
-   File → text extraction (pdf-parse / mammoth)
-        → RecursiveCharacterTextSplitter (1000 chars, 200 overlap)
-        → Gemini / OpenAI embeddings
-        → Upstash Vector (stored under a UUID namespace)
+```text
+Document upload
+    -> parse file
+    -> split into chunks
+    -> generate embeddings
+    -> store vectors in Upstash
 
-2. Chat
-   Question → embed → Upstash similarity search (top 5 chunks)
-            → RAG prompt → chosen LLM (streamed)
-            → SSE to browser → answer + source citations
+User question
+    -> retrieve relevant chunks
+    -> build a context-grounded prompt
+    -> selected LLM
+    -> streamed response + source filenames
 ```
 
----
+The chat prompt instructs the model to answer from the retrieved document context and say when the answer is not present in that context.
 
 ## Tech stack
 
-| | |
+| Area | Technology |
 |---|---|
-| Framework | Next.js 15 (App Router) |
-| AI | LangChain.js 0.3 |
-| Providers | Groq · Gemini · OpenAI · Anthropic · Ollama |
-| Vector DB | Upstash Vector |
-| Embeddings | Gemini embedding-001 · OpenAI text-embedding-3-small |
-| File parsing | pdf-parse · mammoth |
-| Styling | Tailwind CSS v4 |
+| Web application | Next.js 15 App Router, React 19 |
 | Language | TypeScript |
-| Hosting | Vercel |
+| Retrieval / orchestration | LangChain.js |
+| Vector storage | Upstash Vector |
+| LLM integrations | Groq, Google Gemini, OpenAI, Anthropic, Ollama |
+| Document parsing | `pdf-parse`, `mammoth` |
+| Styling | Tailwind CSS 4 |
+| Deployment target | Vercel (requires configured environment variables) |
 
----
+## Run locally (Windows PowerShell)
 
-## Deploy to Vercel
+**Prerequisites:** Node.js 20 or later, npm, API credentials for at least one supported LLM provider, and an Upstash Vector index.
 
-1. Push this repo to your GitHub
-2. Go to [vercel.com](https://vercel.com) → **Add New Project** → import `docuchat-ai`
-3. Add environment variables in **Settings → Environment Variables**:
-   - `GROQ_API_KEY`
-   - `GEMINI_API_KEY`
-   - `UPSTASH_VECTOR_REST_URL`
-   - `UPSTASH_VECTOR_REST_TOKEN`
-   - (and any others you want)
-4. Click **Deploy**
+1. Clone this repository and enter the folder:
 
----
+   ```powershell
+   git clone https://github.com/visheshmalhotraTHECODER/AI-Knowledge-Workspace.git
+   cd AI-Knowledge-Workspace
+   ```
 
-## Development
+2. Install dependencies:
 
-```sh
-npm run dev      # start dev server
-npm test         # run 56 unit tests
-npx tsc --noEmit # type check
-npm run build    # production build
+   ```powershell
+   npm install --legacy-peer-deps
+   ```
+
+   The legacy peer-dependency option may be needed with the dependency versions currently pinned in this starter. It relaxes npm's peer-dependency resolution; it does not prove that every dependency combination is runtime-compatible.
+
+3. Create your local environment file:
+
+   ```powershell
+   Copy-Item .env.example .env.local
+   ```
+
+4. Add the required provider and vector-store values to `.env.local`. Never commit this file.
+
+5. Start the development server:
+
+   ```powershell
+   npm run dev
+   ```
+
+6. Open [http://localhost:3000](http://localhost:3000).
+
+### Environment variables
+
+| Variable | Purpose |
+|---|---|
+| `GROQ_API_KEY` | Groq chat model |
+| `GEMINI_API_KEY` | Gemini model / embeddings |
+| `OPENAI_API_KEY` | OpenAI model / embeddings |
+| `ANTHROPIC_API_KEY` | Anthropic chat model |
+| `OLLAMA_BASE_URL` | Optional local Ollama endpoint |
+| `UPSTASH_VECTOR_REST_URL` | Upstash Vector REST endpoint |
+| `UPSTASH_VECTOR_REST_TOKEN` | Upstash Vector REST token |
+
+Configure only the providers you intend to use. Create the Upstash index with an embedding dimension that matches the selected embedding model. Consult the provider documentation and the application's implementation before changing dimensions.
+
+## Useful commands
+
+```powershell
+npm run dev
+npm test
+npm run build
 ```
 
----
+## Repository layout
 
-## License
+```text
+app/
+  api/
+    chat/       # Retrieval-augmented chat endpoint
+    ingest/     # Document upload, parsing and indexing endpoint
+    providers/  # Provider configuration endpoint
+    suggest/    # Suggested questions endpoint
+  components/   # Chat, document sidebar, upload UI and source cards
+  lib/          # LLM, parsing, embeddings and vector-store helpers
+  page.tsx      # Main application page
+```
 
-MIT © [Dipanshu Singh](https://github.com/Dipanshu-js)
+## Security and operational notes
 
-<div align="center">
-<br/>
-<img src="https://capsule-render.vercel.app/api?type=waving&color=0:7c3aed,100:0d1117&height=80&section=footer" />
-</div>
+- Keep all API keys and service tokens in `.env.local` or deployment environment settings.
+- Do not expose Upstash credentials or private provider keys through client-side variables.
+- The ingestion endpoint accepts PDF, DOCX, TXT and Markdown files and checks file size; deploy behind appropriate authentication, rate limits and abuse controls before exposing it to untrusted users.
+- A successful page load does not confirm that ingestion or chat works. Verify both flows after configuring the providers and vector index.
+- No public production URL is claimed here; deployment requires configuring the secrets in the hosting provider.
+
+## Attribution and license
+
+This repository is an adaptation of **[docuchat-ai](https://github.com/Dipanshu-js/docuchat-ai)** by **[Dipanshu Singh](https://github.com/Dipanshu-js)**. The upstream project and its MIT license are retained; see [LICENSE](LICENSE). The original project/package metadata and copyright notices remain part of the source.
+
+**Portfolio maintainer:** [Vishesh Malhotra](https://github.com/visheshmalhotraTHECODER).
+
+If you build on this adaptation, retain the upstream copyright and license notice as required by the MIT license.
